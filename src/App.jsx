@@ -15,11 +15,15 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div style={{ 
         display: 'flex', 
+        flexDirection: 'column',
         justifyContent: 'center', 
         alignItems: 'center', 
-        minHeight: '80vh' 
+        minHeight: '100vh',
+        background: '#0A0A0A',
+        color: 'white'
       }}>
-        <div className="spinner" />
+        <div className="spinner" style={{ marginBottom: '1rem' }} />
+        <p style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600, letterSpacing: '2px' }}>DBX FOOTBALL</p>
       </div>
     );
   }
@@ -66,6 +70,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              {/* Catch-all for undefined routes */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

@@ -6,9 +6,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="DBX Football - Professional Football Academy Management System" />
     <title>DBX FOOTBALL</title>
+    <style>
+      body { background-color: #0A0A0A; margin: 0; color: white; font-family: sans-serif; }
+      #error-overlay { 
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.9); z-index: 9999; padding: 2rem; box-sizing: border-box; 
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="error-overlay">
+      <h1 style="color: #FF5252;">App Load Error</h1>
+      <p>The application failed to start properly. This is usually due to a missing file or a script error.</p>
+      <pre id="error-details" style="background: #1a1a1a; padding: 1rem; border-radius: 8px; overflow: auto; max-height: 50vh; color: #aaa;"></pre>
+      <button onclick="location.reload()" style="background: #D32F2F; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 1rem;">Reload App</button>
+    </div>
+
+    <script>
+      // Global error handler to catch "blank screen" causing errors
+      window.addEventListener('error', function(event) {
+        const overlay = document.getElementById('error-overlay');
+        const details = document.getElementById('error-details');
+        overlay.style.display = 'block';
+        details.textContent = event.error ? event.error.stack : event.message;
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        const overlay = document.getElementById('error-overlay');
+        const details = document.getElementById('error-details');
+        overlay.style.display = 'block';
+        details.textContent = 'Unhandled Promise Rejection: ' + (event.reason ? (event.reason.stack || event.reason) : 'Unknown reason');
+      });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

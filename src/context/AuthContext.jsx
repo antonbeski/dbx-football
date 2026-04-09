@@ -16,31 +16,51 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check active sessions and sets the user
+    let mounted = true;
+
+    // Safety timeout: If auth takes too long, stop loading so we can at least show something
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth session fetch timed out. Proceeding...');
+        setLoading(false);
+      }
+    }, 5000);
+
     const fetchSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-        setIsAdmin(session?.user?.email === 'antbsk0@gmail.com');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setIsAdmin(session?.user?.email === 'antbsk0@gmail.com');
+        }
       } catch (err) {
         console.error('Error fetching session:', err);
-        setUser(null);
-        setIsAdmin(false);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(timeout);
+        }
       }
     };
 
     fetchSession();
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      setIsAdmin(session?.user?.email === 'antbsk0@gmail.com');
-      setLoading(false);
+      if (mounted) {
+        setUser(session?.user ?? null);
+        setIsAdmin(session?.user?.email === 'antbsk0@gmail.com');
+        setLoading(false);
+        clearTimeout(timeout);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const value = {

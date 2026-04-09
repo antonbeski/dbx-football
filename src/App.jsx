@@ -10,8 +10,28 @@ import Navbar from './components/Navbar';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
+  
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '80vh' 
+      }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
+  
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const PublicRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -23,8 +43,12 @@ function App() {
           <Navbar />
           <main className="container" style={{ paddingTop: '5rem', paddingBottom: '3rem' }}>
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={
+                <PublicRoute><Login /></PublicRoute>
+              } />
+              <Route path="/register" element={
+                <PublicRoute><Register /></PublicRoute>
+              } />
               <Route path="/password-reset" element={<PasswordReset />} />
               <Route 
                 path="/profile" 
@@ -42,6 +66,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
         </div>

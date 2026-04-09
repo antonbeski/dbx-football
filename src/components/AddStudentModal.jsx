@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { X, Upload, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Upload, Check, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AddStudentModal = ({ onClose, onSuccess }) => {
@@ -34,53 +34,68 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
 
       if (file) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        // Attempt to upload - note: user must have created 'students' bucket and set public access
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('students')
-          .upload(filePath, file);
+          .upload(fileName, file);
 
         if (uploadError) {
-          throw new Error('Could not upload image. Make sure a public bucket named "students" exists in Supabase.');
+          throw new Error('Could not upload image. Make sure a public bucket named "students" exists in Supabase Storage.');
         }
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: urlData } = supabase.storage
           .from('students')
-          .getPublicUrl(filePath);
+          .getPublicUrl(fileName);
         
-        picture_url = publicUrl;
+        picture_url = urlData.publicUrl;
       }
+
+      const insertData = {
+        name: formData.name,
+        position: formData.position,
+        picture_url: picture_url || null,
+        age: formData.age ? parseInt(formData.age) : null,
+        height: formData.height || null,
+        weight: formData.weight || null
+      };
 
       const { error: insertError } = await supabase
         .from('students')
-        .insert([{ ...formData, picture_url, age: parseInt(formData.age) }]);
+        .insert([insertData]);
 
       if (insertError) throw insertError;
 
       onSuccess();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to add student.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Close modal on backdrop click
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.8)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 2000,
-      padding: '1rem'
-    }}>
+    <div 
+      onClick={handleBackdropClick}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.8)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2000,
+        padding: '1rem'
+      }}
+    >
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -89,14 +104,19 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Add New <span style={{ color: '#D32F2F' }}>Student</span></h2>
-          <button onClick={onClose} style={{ background: 'transparent', color: '#888' }}><X size={24} /></button>
+          <button onClick={onClose} style={{ background: 'transparent', color: '#888', padding: '0.5rem', borderRadius: '8px' }}
+            onMouseOver={e => e.currentTarget.style.color = 'white'}
+            onMouseOut={e => e.currentTarget.style.color = '#888'}
+          >
+            <X size={24} />
+          </button>
         </div>
 
         {error && (
           <div style={{
             background: 'rgba(255, 82, 82, 0.1)',
-            border: '1px solid var(--error)',
-            color: 'var(--error)',
+            border: '1px solid #FF5252',
+            color: '#FF5252',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
@@ -113,20 +133,24 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Full Name</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Full Name *</label>
               <input 
+                id="student-name"
                 required 
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="Cristiano Ronaldo" 
+                placeholder="Enter student name" 
               />
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Age</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Age *</label>
               <input 
+                id="student-age"
                 type="number" 
                 required 
+                min="5"
+                max="50"
                 value={formData.age}
                 onChange={(e) => setFormData({...formData, age: e.target.value})}
                 placeholder="18" 
@@ -134,8 +158,9 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Position</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Position *</label>
               <select 
+                id="student-position"
                 value={formData.position}
                 onChange={(e) => setFormData({...formData, position: e.target.value})}
               >
@@ -144,9 +169,12 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Height (cm)</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Height (cm)</label>
               <input 
+                id="student-height"
                 type="number" 
+                min="50"
+                max="250"
                 value={formData.height}
                 onChange={(e) => setFormData({...formData, height: e.target.value})}
                 placeholder="185" 
@@ -154,9 +182,12 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Weight (kg)</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Weight (kg)</label>
               <input 
+                id="student-weight"
                 type="number" 
+                min="20"
+                max="200"
                 value={formData.weight}
                 onChange={(e) => setFormData({...formData, weight: e.target.value})}
                 placeholder="80" 
@@ -165,7 +196,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Profile Picture</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Profile Picture</label>
             <div style={{ 
               border: '2px dashed #333', 
               borderRadius: '12px', 
@@ -181,27 +212,39 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 style={{ display: 'none' }} 
                 id="file-upload" 
               />
-              <label htmlFor="file-upload" style={{ cursor: 'pointer' }}>
+              <label htmlFor="file-upload" style={{ cursor: 'pointer', display: 'block' }}>
                 {file ? (
                   <div style={{ color: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                     <Check size={24} /> {file.name}
                   </div>
                 ) : (
                   <>
-                    <Upload size={32} color="#555" style={{ marginBottom: '1rem' }} />
-                    <p style={{ color: '#888' }}>Click to upload student photo</p>
+                    <Upload size={32} color="#555" style={{ marginBottom: '0.75rem' }} />
+                    <p style={{ color: '#888', fontSize: '0.9rem' }}>Click to upload student photo</p>
+                    <p style={{ color: '#555', fontSize: '0.75rem', marginTop: '0.25rem' }}>PNG, JPG up to 5MB</p>
                   </>
                 )}
               </label>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="button" onClick={onClose} className="premium-btn glass" style={{ flex: 1, background: 'transparent' }}>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="premium-btn" 
+              style={{ flex: 1, background: 'transparent', border: '1px solid #333', boxShadow: 'none' }}
+            >
               Cancel
             </button>
-            <button type="submit" className="premium-btn" style={{ flex: 2, justifyContent: 'center' }} disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : 'Save Student'}
+            <button 
+              id="save-student"
+              type="submit" 
+              className="premium-btn" 
+              style={{ flex: 2, justifyContent: 'center' }} 
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save Student'}
             </button>
           </div>
         </form>

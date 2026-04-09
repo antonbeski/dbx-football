@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { KeyRound, Shield, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { KeyRound, Shield, AlertCircle, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Profile = () => {
@@ -14,24 +14,34 @@ const Profile = () => {
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (newPassword.length < 6) {
+      return setError('Password must be at least 6 characters');
+    }
+
     if (newPassword !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
     setLoading(true);
-    setError('');
-    setSuccess('');
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setSuccess('Password updated successfully');
-      setNewPassword('');
-      setConfirmPassword('');
+      if (updateError) {
+        setError(updateError.message);
+      } else {
+        setSuccess('Password updated successfully!');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -41,7 +51,11 @@ const Profile = () => {
         <p style={{ color: '#888' }}>Manage your security and preferences</p>
       </header>
 
-      <section className="premium-card glass">
+      <motion.section 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="premium-card glass"
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
           <div style={{ 
             width: '64px', 
@@ -63,8 +77,8 @@ const Profile = () => {
         {error && (
           <div style={{
             background: 'rgba(255, 82, 82, 0.1)',
-            border: '1px solid var(--error)',
-            color: 'var(--error)',
+            border: '1px solid #FF5252',
+            color: '#FF5252',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
@@ -81,8 +95,8 @@ const Profile = () => {
         {success && (
           <div style={{
             background: 'rgba(76, 175, 80, 0.1)',
-            border: '1px solid var(--success)',
-            color: 'var(--success)',
+            border: '1px solid #4CAF50',
+            color: '#4CAF50',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
@@ -104,11 +118,13 @@ const Profile = () => {
             <div style={{ position: 'relative' }}>
               <KeyRound size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="new-password"
                 type="password" 
-                placeholder="••••••••" 
+                placeholder="Min. 6 characters" 
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required 
+                minLength={6}
                 style={{ paddingLeft: '3rem' }}
               />
             </div>
@@ -119,21 +135,29 @@ const Profile = () => {
             <div style={{ position: 'relative' }}>
               <KeyRound size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="confirm-new-password"
                 type="password" 
                 placeholder="••••••••" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
+                minLength={6}
                 style={{ paddingLeft: '3rem' }}
               />
             </div>
           </div>
 
-          <button type="submit" className="premium-btn" disabled={loading} style={{ width: 'fit-content' }}>
-            {loading ? <Loader2 className="animate-spin" /> : <><Shield size={20} /> Update Password</>}
+          <button 
+            id="update-password-submit"
+            type="submit" 
+            className="premium-btn" 
+            disabled={loading} 
+            style={{ width: 'fit-content' }}
+          >
+            {loading ? 'Updating...' : <><Shield size={20} /> Update Password</>}
           </button>
         </form>
-      </section>
+      </motion.section>
     </div>
   );
 };

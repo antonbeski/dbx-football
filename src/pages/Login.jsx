@@ -17,13 +17,18 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    const { error } = await signIn({ email, password });
+    try {
+      const { error: signInError } = await signIn({ email, password });
 
-    if (error) {
-      setError(error.message);
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+      } else {
+        navigate('/', { replace: true });
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
       setLoading(false);
-    } else {
-      navigate('/');
     }
   };
 
@@ -44,14 +49,14 @@ const Login = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
             Welcome <span style={{ color: '#D32F2F' }}>Back</span>
           </h1>
-          <p style={{ color: '#888' }}>Login to your football management account</p>
+          <p style={{ color: '#888' }}>Login to your DBX Football account</p>
         </div>
 
         {error && (
           <div style={{
             background: 'rgba(255, 82, 82, 0.1)',
-            border: '1px solid var(--error)',
-            color: 'var(--error)',
+            border: '1px solid #FF5252',
+            color: '#FF5252',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
@@ -71,6 +76,7 @@ const Login = () => {
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="login-email"
                 type="email" 
                 placeholder="email@example.com" 
                 value={email}
@@ -86,6 +92,7 @@ const Login = () => {
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="login-password"
                 type="password" 
                 placeholder="••••••••" 
                 value={password}
@@ -101,6 +108,7 @@ const Login = () => {
           </div>
 
           <button 
+            id="login-submit"
             type="submit" 
             className="premium-btn" 
             disabled={loading}

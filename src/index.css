@@ -27,6 +27,15 @@ body {
   color: var(--text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  transition: var(--transition);
+}
+
+a:hover {
+  opacity: 0.85;
 }
 
 button {
@@ -44,10 +53,12 @@ button {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  display: flex;
+  font-size: 0.85rem;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
+  text-decoration: none;
 }
 
 .premium-btn:hover {
@@ -60,6 +71,12 @@ button {
   transform: translateY(0);
 }
 
+.premium-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .premium-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -69,26 +86,31 @@ button {
 }
 
 .premium-card:hover {
-  border-color: var(--primary);
-  transform: translateY(-4px);
+  border-color: rgba(211, 47, 47, 0.3);
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 input, select, textarea {
   width: 100%;
-  background: #222;
+  background: #1a1a1a;
   border: 1px solid var(--border);
   padding: 0.75rem 1rem;
   border-radius: 8px;
   color: white;
   font-family: inherit;
+  font-size: 0.95rem;
   transition: var(--transition);
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary);
-  background: #2A2A2A;
+  background: #222;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+}
+
+input::placeholder {
+  color: #555;
 }
 
 .container {
@@ -98,10 +120,28 @@ input:focus, select:focus, textarea:focus {
 }
 
 .glass {
-  background: rgba(26, 26, 26, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(26, 26, 26, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Spinner Animation */
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #333;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-icon {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Scrollbar */
@@ -120,4 +160,15 @@ input:focus, select:focus, textarea:focus {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem !important;
+  }
 }

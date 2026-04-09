@@ -16,15 +16,19 @@ const PasswordReset = () => {
     setError('');
     setLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
-    });
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      setSuccess(true);
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setSuccess(true);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -69,8 +73,8 @@ const PasswordReset = () => {
         {error && (
           <div style={{
             background: 'rgba(255, 82, 82, 0.1)',
-            border: '1px solid var(--error)',
-            color: 'var(--error)',
+            border: '1px solid #FF5252',
+            color: '#FF5252',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
@@ -90,6 +94,7 @@ const PasswordReset = () => {
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="reset-email"
                 type="email" 
                 placeholder="email@example.com" 
                 value={email}
@@ -101,6 +106,7 @@ const PasswordReset = () => {
           </div>
 
           <button 
+            id="reset-submit"
             type="submit" 
             className="premium-btn" 
             disabled={loading}

@@ -18,25 +18,33 @@ const Register = () => {
     e.preventDefault();
     setError('');
     
+    if (password.length < 6) {
+      return setError('Password must be at least 6 characters');
+    }
+
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
     setLoading(true);
 
-    const { error } = await signUp({ 
-      email, 
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`
-      }
-    });
+    try {
+      const { error: signUpError } = await signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`
+        }
+      });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      setSuccess(true);
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        setSuccess(true);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -73,16 +81,16 @@ const Register = () => {
       >
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            Join the <span style={{ color: '#D32F2F' }}>Club</span>
+            Join <span style={{ color: '#D32F2F' }}>DBX Football</span>
           </h1>
-          <p style={{ color: '#888' }}>Create your player or admin account</p>
+          <p style={{ color: '#888' }}>Create your player account</p>
         </div>
 
         {error && (
           <div style={{
             background: 'rgba(255, 82, 82, 0.1)',
-            border: '1px solid var(--error)',
-            color: 'var(--error)',
+            border: '1px solid #FF5252',
+            color: '#FF5252',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
@@ -102,6 +110,7 @@ const Register = () => {
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="register-email"
                 type="email" 
                 placeholder="email@example.com" 
                 value={email}
@@ -117,11 +126,13 @@ const Register = () => {
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="register-password"
                 type="password" 
-                placeholder="••••••••" 
+                placeholder="Min. 6 characters" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                minLength={6}
                 style={{ paddingLeft: '3rem' }}
               />
             </div>
@@ -132,17 +143,20 @@ const Register = () => {
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
+                id="register-confirm-password"
                 type="password" 
                 placeholder="••••••••" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
+                minLength={6}
                 style={{ paddingLeft: '3rem' }}
               />
             </div>
           </div>
 
           <button 
+            id="register-submit"
             type="submit" 
             className="premium-btn" 
             disabled={loading}

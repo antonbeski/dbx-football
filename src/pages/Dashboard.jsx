@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Users, Calendar as CalendarIcon, Filter, Search, Loader2 } from 'lucide-react';
+import { Plus, Users, Calendar as CalendarIcon, Search, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AddStudentModal from '../components/AddStudentModal';
 import AttendanceCalendar from '../components/AttendanceCalendar';
@@ -12,9 +12,8 @@ const Dashboard = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState('list'); // 'list' or 'attendance'
+  const [view, setView] = useState('list');
 
   useEffect(() => {
     fetchStudents();
@@ -22,23 +21,31 @@ const Dashboard = () => {
 
   const fetchStudents = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .order('name');
-    
-    if (error) {
-      console.error('Error fetching students:', error);
-    } else {
-      setStudents(data);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching students:', error);
+        setStudents([]);
+      } else {
+        setStudents(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setStudents([]);
     }
     setLoading(false);
   };
 
-  const filteredStudents = students.filter(student => 
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.position.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students.filter(student => {
+    const name = (student.name || '').toLowerCase();
+    const position = (student.position || '').toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return name.includes(term) || position.includes(term);
+  });
 
   return (
     <div className="dashboard-container">
@@ -62,17 +69,19 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button 
-            className={`premium-btn ${view === 'attendance' ? '' : 'glass'}`} 
+            className="premium-btn" 
             style={{ 
               background: view === 'attendance' ? '#D32F2F' : 'transparent',
-              borderColor: view === 'attendance' ? '#D32F2F' : 'rgba(255,255,255,0.1)'
+              border: '1px solid',
+              borderColor: view === 'attendance' ? '#D32F2F' : '#333',
+              boxShadow: view === 'attendance' ? '0 4px 15px rgba(211, 47, 47, 0.3)' : 'none'
             }}
             onClick={() => setView(view === 'list' ? 'attendance' : 'list')}
           >
             {view === 'list' ? <CalendarIcon size={20} /> : <Users size={20} />}
-            {view === 'list' ? 'View Attendance' : 'View Students'}
+            {view === 'list' ? 'Attendance' : 'Students'}
           </button>
           
           {isAdmin && view === 'list' && (
@@ -93,6 +102,7 @@ const Dashboard = () => {
           }}>
             <Search size={20} color="#555" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
+              id="student-search"
               type="text" 
               placeholder="Search by name or position..." 
               value={searchTerm}
@@ -103,7 +113,7 @@ const Dashboard = () => {
 
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-              <Loader2 size={48} className="animate-spin" color="#D32F2F" />
+              <div className="spinner" />
             </div>
           ) : (
             <motion.div 
@@ -120,10 +130,10 @@ const Dashboard = () => {
                 ))}
               </AnimatePresence>
               
-              {filteredStudents.length === 0 && (
+              {filteredStudents.length === 0 && !loading && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '5rem', color: '#555' }}>
                   <Users size={64} style={{ marginBottom: '1rem', opacity: 0.2 }} />
-                  <p>No students found matching your search.</p>
+                  <p>{students.length === 0 ? 'No students yet. Add your first student!' : 'No students found matching your search.'}</p>
                 </div>
               )}
             </motion.div>

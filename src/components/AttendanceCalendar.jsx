@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
-import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
-import { Check, X, UserMinus, UserCheck, Loader2, Save } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
 
 const AttendanceCalendar = ({ students }) => {
   const { isAdmin } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    return format(now, 'yyyy-MM-dd');
+  });
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(null);
 
   useEffect(() => {
     fetchAttendance();
@@ -20,17 +24,19 @@ const AttendanceCalendar = ({ students }) => {
 
   const fetchAttendance = async () => {
     setLoading(true);
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    
-    const { data, error } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('date', dateStr);
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('date', selectedDate);
 
-    if (error) {
-      console.error('Error fetching attendance:', error);
-    } else {
-      setAttendance(data || []);
+      if (error) {
+        console.error('Error fetching attendance:', error);
+      } else {
+        setAttendance(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
     }
     setLoading(false);
   };
@@ -39,31 +45,22 @@ const AttendanceCalendar = ({ students }) => {
     if (!isAdmin) return;
 
     const existing = attendance.find(a => a.student_id === studentId);
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-
-    setSaving(studentId); // Use studentId as a loading state for this row
+    setSaving(studentId);
 
     try {
       if (existing) {
-        // Toggle: if present -> absent, if absent -> remove, else add present
-        // Simplified: toggle between present and absent
         const newStatus = existing.status === 'present' ? 'absent' : 'present';
-        
         const { error } = await supabase
           .from('attendance')
           .update({ status: newStatus })
           .eq('id', existing.id);
-        
         if (error) throw error;
       } else {
-        // Add as present
         const { error } = await supabase
           .from('attendance')
-          .insert([{ student_id: studentId, date: dateStr, status: 'present' }]);
-        
+          .insert([{ student_id: studentId, date: selectedDate, status: 'present' }]);
         if (error) throw error;
       }
-      
       await fetchAttendance();
     } catch (err) {
       console.error('Attendance update failed:', err);
@@ -77,41 +74,132 @@ const AttendanceCalendar = ({ students }) => {
     return record ? record.status : 'not-marked';
   };
 
+  // Custom Calendar Logic
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const { year, month } = currentMonth;
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+
+  const prevMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev.month === 0) return { year: prev.year - 1, month: 11 };
+      return { ...prev, month: prev.month - 1 };
+    });
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev.month === 11) return { year: prev.year + 1, month: 0 };
+      return { ...prev, month: prev.month + 1 };
+    });
+  };
+
+  const selectDay = (day) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setSelectedDate(dateStr);
+  };
+
+  const selectedDay = (() => {
+    const parts = selectedDate.split('-');
+    if (parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month) {
+      return parseInt(parts[2]);
+    }
+    return null;
+  })();
+
+  const calendarCells = [];
+  for (let i = 0; i < firstDay; i++) {
+    calendarCells.push(<div key={`empty-${i}`} />);
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const isSelected = day === selectedDay;
+    const isToday = (() => {
+      const now = new Date();
+      return day === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+    })();
+
+    calendarCells.push(
+      <button
+        key={day}
+        onClick={() => selectDay(day)}
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          border: isToday && !isSelected ? '2px solid #D32F2F' : 'none',
+          background: isSelected ? '#D32F2F' : 'transparent',
+          color: isSelected ? 'white' : (isToday ? '#D32F2F' : 'white'),
+          fontWeight: isSelected || isToday ? 700 : 400,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseOver={e => { if (!isSelected) e.currentTarget.style.background = '#333'; }}
+        onMouseOut={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+      >
+        {day}
+      </button>
+    );
+  }
+
+  const displayDate = (() => {
+    const parts = selectedDate.split('-');
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  })();
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '2rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 360px) 1fr', gap: '2rem' }}>
+      {/* Calendar Side */}
       <aside className="premium-card glass" style={{ height: 'fit-content' }}>
-        <h3 style={{ marginBottom: '1.5rem', fontWeight: 700 }}>Select Date</h3>
-        <style>{`
-          .rdp { --rdp-accent-color: #D32F2F; --rdp-background-color: #222; margin: 0; }
-          .rdp-day_selected { background-color: var(--rdp-accent-color) !important; color: white !important; }
-          .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #333 !important; }
-        `}</style>
-        <DayPicker
-          mode="single"
-          selected={selectedDate}
-          onSelect={(date) => date && setSelectedDate(date)}
-          className="custom-calendar"
-        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <button onClick={prevMonth} style={{ background: 'transparent', color: 'white', fontSize: '1.2rem', padding: '0.25rem 0.75rem', borderRadius: '6px' }} 
+            onMouseOver={e => e.currentTarget.style.background = '#333'}
+            onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+            ‹
+          </button>
+          <h3 style={{ fontWeight: 700 }}>{monthNames[month]} {year}</h3>
+          <button onClick={nextMonth} style={{ background: 'transparent', color: 'white', fontSize: '1.2rem', padding: '0.25rem 0.75rem', borderRadius: '6px' }}
+            onMouseOver={e => e.currentTarget.style.background = '#333'}
+            onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+            ›
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', justifyItems: 'center' }}>
+          {dayNames.map(d => (
+            <div key={d} style={{ fontSize: '0.7rem', color: '#666', fontWeight: 600, padding: '0.5rem 0', textTransform: 'uppercase' }}>{d}</div>
+          ))}
+          {calendarCells}
+        </div>
+
         <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #333' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#4CAF50' }}></div>
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#4CAF50' }} />
             <span style={{ fontSize: '0.85rem', color: '#888' }}>Present</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#FF5252' }}></div>
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#FF5252' }} />
             <span style={{ fontSize: '0.85rem', color: '#888' }}>Absent</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#333' }}></div>
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#333' }} />
             <span style={{ fontSize: '0.85rem', color: '#888' }}>Not Marked</span>
           </div>
         </div>
       </aside>
 
+      {/* Attendance List */}
       <main className="premium-card glass">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-            {format(selectedDate, 'MMMM d, yyyy')}
+            {format(displayDate, 'MMMM d, yyyy')}
           </h2>
           <span style={{ color: '#888', fontSize: '0.9rem' }}>
             {attendance.length} of {students.length} marked
@@ -120,7 +208,11 @@ const AttendanceCalendar = ({ students }) => {
 
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <Loader2 className="animate-spin" color="#D32F2F" />
+            <div className="spinner" />
+          </div>
+        ) : students.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#555' }}>
+            <p>No students in the roster yet.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -147,18 +239,24 @@ const AttendanceCalendar = ({ students }) => {
                       width: '40px', 
                       height: '40px', 
                       borderRadius: '50%', 
-                      background: student.picture_url ? `url(${student.picture_url})` : '#333',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      border: '2px solid #222'
-                    }} />
+                      background: student.picture_url ? `url(${student.picture_url}) center/cover` : 'linear-gradient(135deg, #333, #555)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid #222',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      color: '#888'
+                    }}>
+                      {!student.picture_url && (student.name || '?')[0].toUpperCase()}
+                    </div>
                     <div>
                       <div style={{ fontWeight: 600 }}>{student.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#666' }}>{student.position}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#666' }}>{student.position || 'No position'}</div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     {status === 'present' && <span style={{ color: '#4CAF50', fontSize: '0.8rem', fontWeight: 700 }}>PRESENT</span>}
                     {status === 'absent' && <span style={{ color: '#FF5252', fontSize: '0.8rem', fontWeight: 700 }}>ABSENT</span>}
                     
@@ -166,19 +264,22 @@ const AttendanceCalendar = ({ students }) => {
                       <button 
                         onClick={() => toggleAttendance(student.id)}
                         disabled={saving === student.id}
-                        className={`premium-btn ${status === 'present' ? 'glass' : ''}`}
+                        className="premium-btn"
                         style={{ 
-                          padding: '0.5rem', 
+                          padding: '0.4rem 0.75rem', 
                           borderRadius: '8px', 
-                          background: status === 'present' ? 'rgba(76, 175, 80, 0.1)' : (status === 'absent' ? 'rgba(255, 82, 82, 0.1)' : 'rgba(255,255,255,0.05)'),
+                          fontSize: '0.8rem',
+                          background: status === 'present' ? 'rgba(76, 175, 80, 0.15)' : (status === 'absent' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)'),
+                          border: '1px solid',
                           borderColor: status === 'present' ? '#4CAF50' : (status === 'absent' ? '#FF5252' : '#333'),
                           color: status === 'present' ? '#4CAF50' : (status === 'absent' ? '#FF5252' : '#888'),
-                          minWidth: '100px',
+                          boxShadow: 'none',
+                          minWidth: '110px',
                           justifyContent: 'center'
                         }}
                       >
                         {saving === student.id ? (
-                          <Loader2 size={16} className="animate-spin" />
+                          <Loader2 size={14} className="spinner-icon" />
                         ) : (
                           status === 'present' ? 'Mark Absent' : 'Mark Present'
                         )}

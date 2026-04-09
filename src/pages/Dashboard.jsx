@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../context/AuthContext';
-import { Plus, Users, Calendar as CalendarIcon, Search, Loader2 } from 'lucide-react';
+import { useAdmin } from '../context/AuthContext';
+import { Plus, Users, Calendar as CalendarIcon, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AddStudentModal from '../components/AddStudentModal';
 import AttendanceCalendar from '../components/AttendanceCalendar';
 import StudentCard from '../components/StudentCard';
 
 const Dashboard = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, requestAdmin } = useAdmin();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -47,6 +47,12 @@ const Dashboard = () => {
     return name.includes(term) || position.includes(term);
   });
 
+  const handleAddStudent = () => {
+    requestAdmin(() => {
+      setShowAddModal(true);
+    });
+  };
+
   return (
     <div className="dashboard-container">
       <header style={{ 
@@ -84,12 +90,10 @@ const Dashboard = () => {
             {view === 'list' ? 'Attendance' : 'Students'}
           </button>
           
-          {isAdmin && view === 'list' && (
-            <button className="premium-btn" onClick={() => setShowAddModal(true)}>
-              <Plus size={20} />
-              Add Student
-            </button>
-          )}
+          <button className="premium-btn" onClick={handleAddStudent}>
+            <Plus size={20} />
+            Add Student
+          </button>
         </div>
       </header>
 
@@ -133,7 +137,7 @@ const Dashboard = () => {
               {filteredStudents.length === 0 && !loading && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '5rem', color: '#555' }}>
                   <Users size={64} style={{ marginBottom: '1rem', opacity: 0.2 }} />
-                  <p>{students.length === 0 ? 'No students yet. Add your first student!' : 'No students found matching your search.'}</p>
+                  <p>{students.length === 0 ? 'No students yet. Click "Add Student" to get started!' : 'No students found matching your search.'}</p>
                 </div>
               )}
             </motion.div>

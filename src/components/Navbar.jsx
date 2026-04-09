@@ -1,20 +1,10 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { LogOut, Trophy, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAdmin } from '../context/AuthContext';
+import { Trophy, Lock, Unlock } from 'lucide-react';
 
 const Navbar = () => {
-  const { user, signOut, isAdmin } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/login', { replace: true });
-    } catch (err) {
-      console.error('Sign out error:', err);
-    }
-  };
+  const { isAdmin, lockAdmin } = useAdmin();
 
   return (
     <nav className="glass" style={{
@@ -43,45 +33,49 @@ const Navbar = () => {
           DBX <span style={{ color: '#D32F2F' }}>FOOTBALL</span>
         </Link>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          {user ? (
-            <>
-              <Link to="/profile" style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'flex-end', 
-                textDecoration: 'none', 
-                color: 'white' 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {isAdmin ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span style={{ 
+                fontSize: '0.75rem', 
+                color: '#4CAF50', 
+                fontWeight: 700, 
+                letterSpacing: '1px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
               }}>
-                <span style={{ fontSize: '0.75rem', color: '#D32F2F', fontWeight: 700, letterSpacing: '1px' }}>
-                  {isAdmin ? 'ADMIN' : 'PLAYER'}
-                </span>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.email}</span>
-              </Link>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Link 
-                  to="/profile" 
-                  className="premium-btn"
-                  style={{ padding: '0.5rem', background: 'transparent', boxShadow: 'none', border: '1px solid #333' }}
-                  title="Settings"
-                >
-                  <Settings size={18} />
-                </Link>
-                <button 
-                  onClick={handleSignOut}
-                  className="premium-btn"
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                >
-                  <LogOut size={16} />
-                  Logout
-                </button>
-              </div>
-            </>
-          ) : (
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Link to="/login" style={{ color: 'white', textDecoration: 'none', fontWeight: 600 }}>Login</Link>
-              <Link to="/register" className="premium-btn" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>Sign Up</Link>
+                <Unlock size={14} />
+                ADMIN MODE
+              </span>
+              <button 
+                onClick={lockAdmin}
+                className="premium-btn"
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  fontSize: '0.8rem',
+                  background: 'transparent',
+                  border: '1px solid #333',
+                  boxShadow: 'none'
+                }}
+              >
+                <Lock size={14} />
+                Lock
+              </button>
             </div>
+          ) : (
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: '#888', 
+              fontWeight: 600, 
+              letterSpacing: '1px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}>
+              <Lock size={14} />
+              VIEW ONLY
+            </span>
           )}
         </div>
       </div>

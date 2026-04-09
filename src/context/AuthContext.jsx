@@ -1,82 +1,61 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
-const AuthContext = createContext({
-  user: null,
+const AdminContext = createContext({
   isAdmin: false,
-  loading: true,
-  signUp: () => {},
-  signIn: () => {},
-  signOut: () => {},
+  requestAdmin: () => {},
+  showPasswordModal: false,
+  setShowPasswordModal: () => {},
+  pendingAction: null,
 });
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+const ADMIN_PASSWORD = 'pass123';
+
+export const AdminProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
+  // Call this when user tries to do an admin action
+  // If already admin, run callback immediately
+  // Otherwise, show password modal and store callback for later
+  const requestAdmin = useCallback((callback) => {
+    if (isAdmin) {
+      if (callback) callback();
+      return;
+    }
+    setPendingAction(() => callback);
+    setShowPasswordModal(true);
+  }, [isAdmin]);
 
-    // Safety timeout: If auth takes too long, stop loading so we can at least show something
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth session fetch timed out. Proceeding...');
-        setLoading(false);
+  const verifyPassword = (password) => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setShowPasswordModal(false);
+      if (pendingAction) {
+        pendingAction();
+        setPendingAction(null);
       }
-    }, 5000);
+      return true;
+    }
+    return false;
+  };
 
-    const fetchSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        if (mounted) {
-          setUser(session?.user ?? null);
-          setIsAdmin(session?.user?.email === 'antbsk0@gmail.com');
-        }
-      } catch (err) {
-        console.error('Error fetching session:', err);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          clearTimeout(timeout);
-        }
-      }
-    };
-
-    fetchSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (mounted) {
-        setUser(session?.user ?? null);
-        setIsAdmin(session?.user?.email === 'antbsk0@gmail.com');
-        setLoading(false);
-        clearTimeout(timeout);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  const value = {
-    signUp: (data) => supabase.auth.signUp(data),
-    signIn: (data) => supabase.auth.signInWithPassword(data),
-    signOut: () => supabase.auth.signOut(),
-    user,
-    isAdmin,
-    loading,
+  const lockAdmin = () => {
+    setIsAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AdminContext.Provider value={{ 
+      isAdmin, 
+      requestAdmin, 
+      verifyPassword, 
+      lockAdmin,
+      showPasswordModal, 
+      setShowPasswordModal 
+    }}>
       {children}
-    </AuthContext.Provider>
+    </AdminContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAdmin = () => useContext(AdminContext);

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../context/AuthContext';
+import { useAdmin } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
 const AttendanceCalendar = ({ students }) => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, requestAdmin } = useAdmin();
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     return format(now, 'yyyy-MM-dd');
@@ -41,9 +41,7 @@ const AttendanceCalendar = ({ students }) => {
     setLoading(false);
   };
 
-  const toggleAttendance = async (studentId) => {
-    if (!isAdmin) return;
-
+  const doToggleAttendance = async (studentId) => {
     const existing = attendance.find(a => a.student_id === studentId);
     setSaving(studentId);
 
@@ -67,6 +65,12 @@ const AttendanceCalendar = ({ students }) => {
     } finally {
       setSaving(null);
     }
+  };
+
+  const handleToggleAttendance = (studentId) => {
+    requestAdmin(() => {
+      doToggleAttendance(studentId);
+    });
   };
 
   const getStatus = (studentId) => {
@@ -260,31 +264,29 @@ const AttendanceCalendar = ({ students }) => {
                     {status === 'present' && <span style={{ color: '#4CAF50', fontSize: '0.8rem', fontWeight: 700 }}>PRESENT</span>}
                     {status === 'absent' && <span style={{ color: '#FF5252', fontSize: '0.8rem', fontWeight: 700 }}>ABSENT</span>}
                     
-                    {isAdmin && (
-                      <button 
-                        onClick={() => toggleAttendance(student.id)}
-                        disabled={saving === student.id}
-                        className="premium-btn"
-                        style={{ 
-                          padding: '0.4rem 0.75rem', 
-                          borderRadius: '8px', 
-                          fontSize: '0.8rem',
-                          background: status === 'present' ? 'rgba(76, 175, 80, 0.15)' : (status === 'absent' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)'),
-                          border: '1px solid',
-                          borderColor: status === 'present' ? '#4CAF50' : (status === 'absent' ? '#FF5252' : '#333'),
-                          color: status === 'present' ? '#4CAF50' : (status === 'absent' ? '#FF5252' : '#888'),
-                          boxShadow: 'none',
-                          minWidth: '110px',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        {saving === student.id ? (
-                          <Loader2 size={14} className="spinner-icon" />
-                        ) : (
-                          status === 'present' ? 'Mark Absent' : 'Mark Present'
-                        )}
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleToggleAttendance(student.id)}
+                      disabled={saving === student.id}
+                      className="premium-btn"
+                      style={{ 
+                        padding: '0.4rem 0.75rem', 
+                        borderRadius: '8px', 
+                        fontSize: '0.8rem',
+                        background: status === 'present' ? 'rgba(76, 175, 80, 0.15)' : (status === 'absent' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)'),
+                        border: '1px solid',
+                        borderColor: status === 'present' ? '#4CAF50' : (status === 'absent' ? '#FF5252' : '#333'),
+                        color: status === 'present' ? '#4CAF50' : (status === 'absent' ? '#FF5252' : '#888'),
+                        boxShadow: 'none',
+                        minWidth: '110px',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {saving === student.id ? (
+                        <Loader2 size={14} className="spinner-icon" />
+                      ) : (
+                        status === 'present' ? 'Mark Absent' : 'Mark Present'
+                      )}
+                    </button>
                   </div>
                 </div>
               );

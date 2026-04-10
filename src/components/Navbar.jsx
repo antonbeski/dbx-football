@@ -19,19 +19,34 @@ const Navbar = () => {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <Link to="/" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          textDecoration: 'none',
-          color: 'white',
-          fontWeight: 800,
-          fontSize: '1.5rem',
-          letterSpacing: '-1px'
-        }}>
-          <Trophy size={32} color="#D32F2F" fill="#D32F2F" />
-          DBX <span style={{ color: '#D32F2F' }}>FOOTBALL</span>
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <Link to="/" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            textDecoration: 'none',
+            color: 'white',
+            fontWeight: 800,
+            fontSize: '1.5rem',
+            letterSpacing: '-1px'
+          }}>
+            <Trophy size={32} color="#D32F2F" fill="#D32F2F" />
+            DBX <span style={{ color: '#D32F2F' }}>FOOTBALL</span>
+          </Link>
+
+          <div style={{ display: 'flex', gap: '1.5rem', marginLeft: '1rem' }}>
+            <Link to="/" style={{ color: '#fff', textDecoration: 'none', fontWeight: 600, opacity: 0.8 }}
+                  onMouseOver={e => e.currentTarget.style.opacity = 1}
+                  onMouseOut={e => e.currentTarget.style.opacity = 0.8}>
+              Academy
+            </Link>
+            <Link to="/leagues" style={{ color: '#fff', textDecoration: 'none', fontWeight: 600, opacity: 0.8 }}
+                  onMouseOver={e => e.currentTarget.style.opacity = 1}
+                  onMouseOut={e => e.currentTarget.style.opacity = 0.8}>
+              Leagues
+            </Link>
+          </div>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {isAdmin ? (

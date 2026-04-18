@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdmin } from '../../context/AuthContext';
 import { generateSnakeDraft } from '../../lib/leagueLogic';
@@ -7,8 +7,18 @@ import { Plus, Users, AlertCircle, Trash2, Edit } from 'lucide-react';
 const DraftTab = ({ league, teams, players, refreshData }) => {
   const { requestAdmin } = useAdmin();
   const [formData, setFormData] = useState({ name: '', age: '', position: 'forward', skill_level: '3' });
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [drafting, setDrafting] = useState(false);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      const { data } = await supabase.from('students').select('*').order('name');
+      if (data) setStudents(data);
+    };
+    fetchStudents();
+  }, []);
 
   const handleAddPlayer = async (e) => {
     e.preventDefault();
@@ -25,6 +35,7 @@ const DraftTab = ({ league, teams, players, refreshData }) => {
       }]);
       if (!error) {
         setFormData({ name: '', age: '', position: 'forward', skill_level: '3' });
+        setSelectedStudentId('');
         refreshData();
       }
     } catch (err) {
@@ -96,8 +107,32 @@ const DraftTab = ({ league, teams, players, refreshData }) => {
         {league.status === 'setup' && !hasDrafted ? (
           <form onSubmit={handleAddPlayer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Name</label>
-              <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="Player Name" style={{ width: '100%', padding: '0.5rem' }} />
+              <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Select Student</label>
+              <select 
+                required 
+                value={selectedStudentId} 
+                onChange={(e) => {
+                  const sId = e.target.value;
+                  setSelectedStudentId(sId);
+                  const student = students.find(s => s.id === sId);
+                  if (student) {
+                    setFormData({
+                      ...formData,
+                      name: student.name,
+                      age: student.age || '',
+                      position: student.position?.toLowerCase() || 'forward'
+                    });
+                  } else {
+                    setFormData({ ...formData, name: '' });
+                  }
+                }} 
+                style={{ width: '100%', padding: '0.5rem', background: '#fff', color: '#000', borderRadius: '4px' }}
+              >
+                <option value="">-- Select a registered student --</option>
+                {students.filter(s => !players.some(p => p.name === s.name)).map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.position || 'No Pos'})</option>
+                ))}
+              </select>
             </div>
             <div style={{ display: 'flex', gap: '1rem' }}>
               <div style={{ flex: 1 }}>

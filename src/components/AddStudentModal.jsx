@@ -3,14 +3,14 @@ import { supabase } from '../lib/supabaseClient';
 import { X, Upload, Check, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const AddStudentModal = ({ onClose, onSuccess }) => {
+const AddStudentModal = ({ onClose, onSuccess, initialData }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    position: 'Forward',
-    height: '',
-    weight: '',
-    picture_url: ''
+    name: initialData?.name || '',
+    age: initialData?.age || '',
+    position: initialData?.position || 'Forward',
+    height: initialData?.height || '',
+    weight: initialData?.weight || '',
+    picture_url: initialData?.picture_url || ''
   });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -60,11 +60,20 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
         weight: formData.weight || null
       };
 
-      const { error: insertError } = await supabase
-        .from('students')
-        .insert([insertData]);
+      if (initialData) {
+        const { error: updateError } = await supabase
+          .from('students')
+          .update(insertData)
+          .eq('id', initialData.id);
 
-      if (insertError) throw insertError;
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('students')
+          .insert([insertData]);
+
+        if (insertError) throw insertError;
+      }
 
       onSuccess();
     } catch (err) {
@@ -103,7 +112,9 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
         style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Add New <span style={{ color: '#D32F2F' }}>Student</span></h2>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
+            {initialData ? 'Edit' : 'Add New'} <span style={{ color: '#D32F2F' }}>Student</span>
+          </h2>
           <button onClick={onClose} style={{ background: 'transparent', color: '#888', padding: '0.5rem', borderRadius: '8px' }}
             onMouseOver={e => e.currentTarget.style.color = 'white'}
             onMouseOut={e => e.currentTarget.style.color = '#888'}
@@ -244,7 +255,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
               style={{ flex: 2, justifyContent: 'center' }} 
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Save Student'}
+              {loading ? 'Saving...' : (initialData ? 'Update Student' : 'Save Student')}
             </button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAdmin } from '../context/AuthContext';
-import { Trophy, Plus, MapPin, Clock, Users } from 'lucide-react';
+import { Trophy, Plus, MapPin, Clock, Users, Edit, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CreateLeagueModal from '../components/CreateLeagueModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ const LeagueList = () => {
   const [leagues, setLeagues] = [useState([]), useState([])][0];
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editLeague, setEditLeague] = useState(null);
 
   useEffect(() => {
     fetchLeagues();
@@ -33,7 +34,34 @@ const LeagueList = () => {
   };
 
   const handleCreate = () => {
-    requestAdmin(() => setShowModal(true));
+    requestAdmin(() => {
+      setEditLeague(null);
+      setShowModal(true);
+    });
+  };
+
+  const handleEditLeague = (e, league) => {
+    e.stopPropagation();
+    requestAdmin(() => {
+      setEditLeague(league);
+      setShowModal(true);
+    });
+  };
+
+  const handleDeleteLeague = (e, league) => {
+    e.stopPropagation();
+    requestAdmin(async () => {
+      if (!window.confirm(`Are you sure you want to delete ${league.name}? This will delete all teams, fixtures, and standings. This cannot be undone.`)) return;
+      
+      try {
+        const { error } = await supabase.from('leagues').delete().eq('id', league.id);
+        if (error) throw error;
+        fetchLeagues();
+      } catch (err) {
+        console.error('Failed to delete league:', err);
+        alert('Failed to delete league.');
+      }
+    });
   };
 
   const getStatusColor = (status) => {
@@ -86,13 +114,34 @@ const LeagueList = () => {
                     Season {league.season}
                   </span>
                 </div>
-                <div style={{ 
-                  fontSize: '0.75rem', fontWeight: 700, padding: '0.25rem 0.6rem', 
-                  borderRadius: '12px', background: `${getStatusColor(league.status)}22`,
-                  color: getStatusColor(league.status), border: `1px solid ${getStatusColor(league.status)}44`,
-                  textTransform: 'uppercase'
-                }}>
-                  {league.status}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ 
+                    fontSize: '0.75rem', fontWeight: 700, padding: '0.25rem 0.6rem', 
+                    borderRadius: '12px', background: `${getStatusColor(league.status)}22`,
+                    color: getStatusColor(league.status), border: `1px solid ${getStatusColor(league.status)}44`,
+                    textTransform: 'uppercase'
+                  }}>
+                    {league.status}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button 
+                      onClick={(e) => handleEditLeague(e, league)}
+                      style={{ background: 'transparent', border: 'none', color: '#888', padding: '0.2rem', cursor: 'pointer' }}
+                      onMouseOver={(e) => e.currentTarget.style.color = 'white'}
+                      onMouseOut={(e) => e.currentTarget.style.color = '#888'}
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => handleDeleteLeague(e, league)}
+                      style={{ background: 'transparent', border: 'none', color: '#D32F2F', padding: '0.2rem', cursor: 'pointer' }}
+                      onMouseOver={(e) => e.currentTarget.style.color = '#FF5252'}
+                      onMouseOut={(e) => e.currentTarget.style.color = '#D32F2F'}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -118,10 +167,19 @@ const LeagueList = () => {
 
       {showModal && (
         <CreateLeagueModal 
-          onClose={() => setShowModal(false)}
+          initialData={editLeague}
+          onClose={() => {
+            setShowModal(false);
+            setEditLeague(null);
+          }}
           onSuccess={(newLeagueId) => {
             setShowModal(false);
-            navigate(`/leagues/${newLeagueId}`);
+            setEditLeague(null);
+            if (!editLeague) {
+              navigate(`/leagues/${newLeagueId}`);
+            } else {
+              fetchLeagues();
+            }
           }}
         />
       )}

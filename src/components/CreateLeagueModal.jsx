@@ -3,13 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 import { X, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const CreateLeagueModal = ({ onClose, onSuccess }) => {
+const CreateLeagueModal = ({ onClose, onSuccess, initialData }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    season: new Date().getFullYear().toString(),
-    total_teams: 4,
-    match_duration_minutes: 30,
-    ground_name: ''
+    name: initialData?.name || '',
+    season: initialData?.season || new Date().getFullYear().toString(),
+    total_teams: initialData?.total_teams || 4,
+    match_duration_minutes: initialData?.match_duration_minutes || 30,
+    ground_name: initialData?.ground_name || ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,36 +20,57 @@ const CreateLeagueModal = ({ onClose, onSuccess }) => {
     setError('');
 
     try {
-      // 1. Create League
-      const { data: leagueData, error: leagueError } = await supabase
-        .from('leagues')
-        .insert([{
-          name: formData.name,
-          season: formData.season,
-          total_teams: parseInt(formData.total_teams),
-          match_duration_minutes: parseInt(formData.match_duration_minutes),
-          ground_name: formData.ground_name,
-          status: 'setup'
-        }])
-        .select()
-        .single();
+      let leagueId;
 
-      if (leagueError) throw leagueError;
+      if (initialData) {
+        // Update League
+        const { data: leagueData, error: leagueError } = await supabase
+          .from('leagues')
+          .update({
+            name: formData.name,
+            season: formData.season,
+            total_teams: parseInt(formData.total_teams),
+            match_duration_minutes: parseInt(formData.match_duration_minutes),
+            ground_name: formData.ground_name
+          })
+          .eq('id', initialData.id)
+          .select()
+          .single();
 
-      // 2. Auto-generate empty generic teams for the draft
-      const teamInserts = [];
-      for (let i = 1; i <= parseInt(formData.total_teams); i++) {
-        teamInserts.push({
-          league_id: leagueData.id,
-          name: `Team ${i}`,
-          total_players: 0
-        });
+        if (leagueError) throw leagueError;
+        leagueId = leagueData.id;
+      } else {
+        // Create League
+        const { data: leagueData, error: leagueError } = await supabase
+          .from('leagues')
+          .insert([{
+            name: formData.name,
+            season: formData.season,
+            total_teams: parseInt(formData.total_teams),
+            match_duration_minutes: parseInt(formData.match_duration_minutes),
+            ground_name: formData.ground_name,
+            status: 'setup'
+          }])
+          .select()
+          .single();
+
+        if (leagueError) throw leagueError;
+        leagueId = leagueData.id;
+
+        // Auto-generate empty generic teams
+        const teamInserts = [];
+        for (let i = 1; i <= parseInt(formData.total_teams); i++) {
+          teamInserts.push({
+            league_id: leagueId,
+            name: `Team ${i}`,
+            total_players: 0
+          });
+        }
+        const { error: teamsError } = await supabase.from('teams').insert(teamInserts);
+        if (teamsError) throw teamsError;
       }
 
-      const { error: teamsError } = await supabase.from('teams').insert(teamInserts);
-      if (teamsError) throw teamsError;
-
-      onSuccess(leagueData.id);
+      onSuccess(leagueId);
     } catch (err) {
       setError(err.message || 'Failed to create league.');
     } finally {
@@ -78,7 +99,7 @@ const CreateLeagueModal = ({ onClose, onSuccess }) => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Trophy color="#D32F2F" /> Create <span style={{ color: '#D32F2F' }}>League</span>
+            <Trophy color="#D32F2F" /> {initialData ? 'Edit' : 'Create'} <span style={{ color: '#D32F2F' }}>League</span>
           </h2>
           <button onClick={onClose} style={{ background: 'transparent', color: '#888' }}><X /></button>
         </div>
@@ -98,7 +119,11 @@ const CreateLeagueModal = ({ onClose, onSuccess }) => {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Total Teams *</label>
-              <select value={formData.total_teams} onChange={e => setFormData({...formData, total_teams: e.target.value})}>
+              <select 
+                disabled={!!initialData}
+                value={formData.total_teams} 
+                onChange={e => setFormData({...formData, total_teams: e.target.value})}
+              >
                 <option value="4">4 Teams</option>
                 <option value="5">5 Teams</option>
                 <option value="6">6 Teams</option>
@@ -119,7 +144,7 @@ const CreateLeagueModal = ({ onClose, onSuccess }) => {
           </div>
 
           <button type="submit" disabled={loading} className="premium-btn" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-            {loading ? 'Creating...' : 'Create League'}
+            {loading ? 'Saving...' : (initialData ? 'Update League' : 'Create League')}
           </button>
         </form>
       </motion.div>

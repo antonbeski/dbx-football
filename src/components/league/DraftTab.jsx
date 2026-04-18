@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdmin } from '../../context/AuthContext';
 import { generateSnakeDraft } from '../../lib/leagueLogic';
-import { Plus, Users, AlertCircle } from 'lucide-react';
+import { Plus, Users, AlertCircle, Trash2, Edit } from 'lucide-react';
 
 const DraftTab = ({ league, teams, players, refreshData }) => {
   const { requestAdmin } = useAdmin();
@@ -31,6 +31,32 @@ const DraftTab = ({ league, teams, players, refreshData }) => {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  const handleDeletePlayer = (playerId) => {
+    requestAdmin(async () => {
+      if (!window.confirm("Are you sure you want to delete this player?")) return;
+      try {
+        await supabase.from('league_players').delete().eq('id', playerId);
+        refreshData();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  };
+
+  const handleEditTeamName = (team) => {
+    requestAdmin(async () => {
+      const newName = window.prompt("Enter new team name:", team.name);
+      if (newName && newName.trim() !== "" && newName !== team.name) {
+        try {
+          await supabase.from('teams').update({ name: newName.trim() }).eq('id', team.id);
+          refreshData();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
   };
 
   const handleExecuteDraft = () => {
@@ -123,8 +149,14 @@ const DraftTab = ({ league, teams, players, refreshData }) => {
         {!hasDrafted ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
             {players.map(p => (
-              <div key={p.id} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid #222' }}>
-                <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>{p.name}</div>
+              <div key={p.id} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid #222', position: 'relative' }}>
+                <button 
+                  onClick={() => handleDeletePlayer(p.id)}
+                  style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'transparent', border: 'none', color: '#D32F2F', cursor: 'pointer' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+                <div style={{ fontWeight: 700, marginBottom: '0.2rem', paddingRight: '1.5rem' }}>{p.name}</div>
                 <div style={{ fontSize: '0.75rem', color: '#888', display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ textTransform: 'capitalize' }}>{p.position}</span>
                   <span style={{ color: '#FFC107' }}>★ {p.skill_level}</span>
@@ -138,8 +170,13 @@ const DraftTab = ({ league, teams, players, refreshData }) => {
               const teamPlayers = players.filter(p => p.team_id === team.id);
               return (
                 <div key={team.id} style={{ border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ background: '#222', padding: '0.75rem 1rem', fontWeight: 700 }}>
-                    {team.name} <span style={{ color: '#888', fontSize: '0.8rem', fontWeight: 400 }}>({teamPlayers.length} players)</span>
+                  <div style={{ background: '#222', padding: '0.75rem 1rem', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      {team.name} <span style={{ color: '#888', fontSize: '0.8rem', fontWeight: 400 }}>({teamPlayers.length} players)</span>
+                    </div>
+                    <button onClick={() => handleEditTeamName(team)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}>
+                      <Edit size={14} />
+                    </button>
                   </div>
                   <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem' }}>
                     {teamPlayers.map(p => (

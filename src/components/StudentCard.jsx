@@ -1,8 +1,8 @@
 import React from 'react';
-import { User, Ruler, Weight, Award } from 'lucide-react';
+import { User, Ruler, Weight, Award, Edit, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const StudentCard = ({ student }) => {
+const StudentCard = ({ student, onEdit, onDelete }) => {
   const name = student.name || 'Unknown';
   const position = student.position || 'N/A';
   const age = student.age || 'N/A';
@@ -56,6 +56,31 @@ const StudentCard = ({ student }) => {
           background: 'linear-gradient(to top, rgba(26,26,26,1), transparent)'
         }} />
         
+        <div style={{
+          position: 'absolute',
+          top: '1rem',
+          right: '1rem',
+          display: 'flex',
+          gap: '0.5rem'
+        }}>
+          {onEdit && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(student); }}
+              style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '0.4rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Edit size={14} />
+            </button>
+          )}
+          {onDelete && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(student); }}
+              style={{ background: 'rgba(211, 47, 47, 0.8)', border: 'none', color: 'white', padding: '0.4rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+
         <div style={{
           position: 'absolute',
           bottom: '1rem',

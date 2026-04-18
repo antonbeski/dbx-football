@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdmin } from '../../context/AuthContext';
 import { generateFixtures } from '../../lib/leagueLogic';
-import { Calendar, Play } from 'lucide-react';
+import { Calendar, Play, Edit, Trash2 } from 'lucide-react';
 
 const FixturesTab = ({ league, teams, fixtures, refreshData }) => {
   const { requestAdmin } = useAdmin();
@@ -69,6 +69,18 @@ const FixturesTab = ({ league, teams, fixtures, refreshData }) => {
     setLoading(false);
   };
 
+  const handleDeleteFixture = (id) => {
+    requestAdmin(async () => {
+      if (!window.confirm("Are you sure you want to delete this fixture?")) return;
+      try {
+        await supabase.from('fixtures').delete().eq('id', id);
+        refreshData();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  };
+
   const hasFixtures = fixtures.length > 0;
   
   // Group by matchday
@@ -115,7 +127,7 @@ const FixturesTab = ({ league, teams, fixtures, refreshData }) => {
                       
                       <div style={{ flex: 1, fontWeight: isCompleted && fix.away_goals > fix.home_goals ? 800 : 500 }}>{away?.name}</div>
 
-                      <div style={{ width: '120px', textAlign: 'right' }}>
+                      <div style={{ width: '150px', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {!isCompleted ? (
                           <button onClick={() => requestAdmin(() => {
                             setResultForm(fix); setHomeGoals(0); setAwayGoals(0);
@@ -123,8 +135,20 @@ const FixturesTab = ({ league, teams, fixtures, refreshData }) => {
                             Add Result
                           </button>
                         ) : (
-                          <span style={{ fontSize: '0.75rem', color: '#4CAF50', fontWeight: 600 }}>COMPLETED</span>
+                          <button onClick={() => requestAdmin(() => {
+                            setResultForm(fix); setHomeGoals(fix.home_goals); setAwayGoals(fix.away_goals);
+                          })} style={{ background: 'transparent', border: '1px solid #4CAF50', color: '#4CAF50', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <Edit size={12} /> Edit
+                          </button>
                         )}
+                        <button 
+                          onClick={() => handleDeleteFixture(fix.id)}
+                          style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '0.25rem' }}
+                          onMouseOver={e=>e.currentTarget.style.color='#D32F2F'}
+                          onMouseOut={e=>e.currentTarget.style.color='#888'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
                   );

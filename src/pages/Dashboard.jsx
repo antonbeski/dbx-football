@@ -12,6 +12,7 @@ const Dashboard = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState('list');
 
@@ -49,7 +50,30 @@ const Dashboard = () => {
 
   const handleAddStudent = () => {
     requestAdmin(() => {
+      setEditStudent(null);
       setShowAddModal(true);
+    });
+  };
+
+  const handleEditStudent = (student) => {
+    requestAdmin(() => {
+      setEditStudent(student);
+      setShowAddModal(true);
+    });
+  };
+
+  const handleDeleteStudent = (student) => {
+    requestAdmin(async () => {
+      if (!window.confirm(`Are you sure you want to delete ${student.name}? This cannot be undone.`)) return;
+      
+      try {
+        const { error } = await supabase.from('students').delete().eq('id', student.id);
+        if (error) throw error;
+        fetchStudents();
+      } catch (err) {
+        console.error('Failed to delete student:', err);
+        alert('Failed to delete student.');
+      }
     });
   };
 
@@ -130,7 +154,12 @@ const Dashboard = () => {
             >
               <AnimatePresence>
                 {filteredStudents.map(student => (
-                  <StudentCard key={student.id} student={student} />
+                  <StudentCard 
+                    key={student.id} 
+                    student={student} 
+                    onEdit={handleEditStudent}
+                    onDelete={handleDeleteStudent}
+                  />
                 ))}
               </AnimatePresence>
               
@@ -149,9 +178,14 @@ const Dashboard = () => {
 
       {showAddModal && (
         <AddStudentModal 
-          onClose={() => setShowAddModal(false)} 
+          initialData={editStudent}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditStudent(null);
+          }} 
           onSuccess={() => {
             setShowAddModal(false);
+            setEditStudent(null);
             fetchStudents();
           }} 
         />
